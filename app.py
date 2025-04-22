@@ -57,7 +57,7 @@ set_background()
 if "messages" not in st.session_state:
     st.session_state.messages = [{
         "role": "assistant",
-        "content": "👋 Hey sneakerhead! 🔥\n\nAsk me about:\n- 🚀 Upcoming releases\n- 🎟️ Raffle information\n- 🔄 Restock alerts\n- 📅 Release dates\n\nI'm your ultimate sneaker guide! 👟"
+        "content": "👋 Hey sneakerhead! 🔥\n\nAsk me about:\n• 🚀 Upcoming releases\n• 🎟️ Raffle information\n• 🔄 Restock alerts\n• 📅 Release dates\n\nI'm your ultimate sneaker guide! 👟"
     }]
 
 # Configure sidebar
@@ -87,19 +87,11 @@ with st.sidebar:
 # Main interface
 st.title("👟 AI Sneaker Release Tracker")
 st.caption("Never miss a drop with real-time updates on limited editions and exclusive releases")
-st.caption("Ayush Raj | Shokendra Singh | Marouf Wani")
 
-# Display chat history with enhanced formatting
+# Display chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        # Add emoji enhancement to assistant messages
-        if message["role"] == "assistant":
-            content = message["content"]
-            # Replace hyphens with emoji bullets
-            content = content.replace("- ", "• ")
-            st.markdown(content)
-        else:
-            st.markdown(message["content"])
+        st.markdown(message["content"])
 
 # Handle user input
 if prompt := st.chat_input("Ask about sneakers..."):
@@ -108,6 +100,20 @@ if prompt := st.chat_input("Ask about sneakers..."):
     
     with st.chat_message("user"):
         st.markdown(prompt)
+
+    # Topic enforcement check
+    sneaker_keywords = [
+        'sneaker', 'shoe', 'drop', 'release', 'raffle', 'restock',
+        'jordan', 'nike', 'adidas', 'yeezy', 'dunk', 'air force',
+        'collab', 'limited edition', 'resell', 'retail'
+    ]
+    
+    if not any(kw in prompt.lower() for kw in sneaker_keywords):
+        rejection_msg = "🚫 I specialize exclusively in sneaker releases! Ask me about:\n• 🔥 New drops\n• 🎟️ Raffle entries\n• 🔄 Restock alerts\n• 📅 Release dates"
+        st.session_state.messages.append({"role": "assistant", "content": rejection_msg})
+        with st.chat_message("assistant"):
+            st.markdown(rejection_msg)
+        st.stop()
 
     if not api_key:
         with st.chat_message("assistant"):
@@ -119,11 +125,9 @@ if prompt := st.chat_input("Ask about sneakers..."):
         full_response = ""
         attempts = 0
         
-        # Thinking animation
         with st.spinner("🔍 Checking the latest sneaker news..."):
             while attempts < max_retries:
                 try:
-                    # API request with enhanced emoji formatting
                     response = requests.post(
                         "https://openrouter.ai/api/v1/chat/completions",
                         headers={
@@ -137,16 +141,18 @@ if prompt := st.chat_input("Ask about sneakers..."):
                             "messages": [
                                 {
                                     "role": "system",
-                                    "content": f"""You are a professional sneaker release analyst. Follow these rules:
-1. Use emojis to make responses engaging
-2. Format lists with bullet points (•)
-3. Include dates as: Month Day, Year
-4. Structure information clearly:
+                                    "content": f"""You are a professional sneaker release analyst. Follow these rules STRICTLY:
+1. Answer ONLY about sneaker-related topics
+2. If asked about other subjects, respond: "🚫 I specialize exclusively in sneaker releases. Ask me about drops, raffles, or restocks!"
+3. Use emojis to make responses engaging
+4. Format lists with bullet points (•)
+5. Include dates as: Month Day, Year
+6. Structure information clearly:
 • 🔥 Release Name: [Name]
 • 📅 Date: [Date]
 • 🏪 Stores: [Where to buy]
 • 💰 Resell: [Price]
-5. Current date: {time.strftime("%B %d, %Y")}"""
+7. Current date: {time.strftime("%B %d, %Y")}"""
                                 },
                                 *st.session_state.messages
                             ],
@@ -160,10 +166,8 @@ if prompt := st.chat_input("Ask about sneakers..."):
                     data = response.json()
                     raw_response = data['choices'][0]['message']['content']
                     
-                    # Process response to enhance formatting
+                    # Response processing
                     processed_response = raw_response
-                    
-                    # Clean response
                     formatting_cleaners = [
                         ("```json", ""), ("```", ""), ("\\boxed{", ""),
                         ("**", ""), ("###", ""), ("####", ""), ("\\n", "\n"),
@@ -173,18 +177,19 @@ if prompt := st.chat_input("Ask about sneakers..."):
                     for pattern, replacement in formatting_cleaners:
                         processed_response = processed_response.replace(pattern, replacement)
                     
-                    # Enhance lists with emojis
+                    # Enhanced formatting
                     lines = processed_response.split('\n')
                     enhanced_lines = []
                     for line in lines:
-                        if line.startswith("- Release Name:"):
-                            line = "🔥 " + line[2:]
-                        elif line.startswith("- Date:"):
-                            line = "📅 " + line[2:]
-                        elif line.startswith("- Stores:"):
-                            line = "🏪 " + line[2:]
-                        elif line.startswith("- Resell:"):
-                            line = "💰 " + line[2:]
+                        line = line.replace("- ", "• ")
+                        if line.startswith("• Release Name:"):
+                            line = line.replace("• Release Name:", "🔥 Release Name:")
+                        elif line.startswith("• Date:"):
+                            line = line.replace("• Date:", "📅 Date:")
+                        elif line.startswith("• Stores:"):
+                            line = line.replace("• Stores:", "🏪 Stores:")
+                        elif line.startswith("• Resell:"):
+                            line = line.replace("• Resell:", "💰 Resell:")
                         enhanced_lines.append(line)
                     
                     processed_response = '\n'.join(enhanced_lines)
